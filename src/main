@@ -1,0 +1,156 @@
+#!/usr/bin/env python3
+import json
+import os
+import shutil
+import sys
+
+
+class DotFiles:
+    version = 1.0
+    environment_path = os.environ['HOME'] if 1 else '.'
+    dot_file_name = '.dotfiles.json'
+    dot_file_path = os.path.join(environment_path, dot_file_name)
+    dot_file_json = {'.dotfiles.json': ['DotFiles配置', 0]}
+    
+    def __init__(self) -> None:
+        super().__init__()
+        if not os.path.exists(self.dot_file_path):
+            self.__save()
+        else:
+            try:
+                self.dot_file_json = json.load(open(self.dot_file_path, 'r', encoding='utf-8'))
+            except IOError and json.decoder.JSONDecodeError:
+                print('.dotfiles.json load failed')
+                exit(1)
+
+    def list(self, is_sort=False):
+        total_size = 0
+        listdir = os.listdir(self.environment_path)
+        if is_sort:
+            tracked_list = sorted(self.dot_file_json.keys())
+        else:
+            tracked_list = sorted(self.dot_file_json.keys(), key=lambda x: self.dot_file_json[x][1], reverse=True)
+        white_list = [i for i in listdir if not i.startswith('.')]
+        un_tracked_list = sorted(set(listdir).difference(white_list).difference(tracked_list))
+        filename_len = max([len(i) for i in listdir])
+        for filename in tracked_list:
+            item = self.dot_file_json[filename]
+            total_size += item[1]
+            output = "{:>6}\t{:<12}\t\033[0;%im{:%i}\033[0m\t{}" % (
+                34 if os.path.isdir(os.path.join(self.environment_path, filename)) else 0, filename_len
+            )
+            output = output.format(self.__getsize_format(filename, item[1]), item[1], filename, item[0])
+            print(output)
+        if len(un_tracked_list) > 0:
+            print('\033[0;31m* 未跟踪文件 *\033[0m')
+        for filename in un_tracked_list:
+            size = self.__getsize(filename)
+            total_size += size
+            output = "{:>6}\t{:<12}\t\033[0;%im{:%i}\033[0m" % (
+                34 if os.path.isdir(os.path.join(self.environment_path, filename)) else 0, filename_len
+            )
+            output = output.format(self.__getsize_format(filename, size), size, filename)
+            print(output)
+        print('\033[0;31m* 总计大小 *\033[0m')
+        print("{:>6}\t{:<12}".format(self.__getsize_format('.', total_size), total_size))
+
+    def add(self, filename, description):
+        self.dot_file_json[filename] = [description, self.__getsize(filename)]
+        self.__save()
+
+    def remove(self, filename):
+        if filename in self.dot_file_json:
+            self.dot_file_json.pop(filename)
+        self.__save()
+
+    def update(self):
+        for filename in self.dot_file_json.keys():
+            size = self.__getsize(filename)
+            self.dot_file_json[filename][1] = size
+            output = "{:>6}\t\033[0;%im{}\033[0m" % (
+                34 if os.path.isdir(os.path.join(self.environment_path, filename)) else 0
+            )
+            output = output.format(self.__getsize_format(filename, size), filename)
+            print(output)
+        print('\033[0;31m* 更新完成 *\033[0m')
+        self.__save()
+
+    def clean(self):
+        listdir = os.listdir(self.environment_path)
+        tracked_list = sorted(self.dot_file_json.keys())
+        white_list = [i for i in listdir if not i.startswith('.')]
+        un_tracked_list = sorted(set(listdir).difference(white_list).difference(tracked_list))
+        for filename in un_tracked_list:
+            path = os.path.join(self.environment_path, filename)
+            shutil.move(path, os.path.join(os.environ['HOME'], '.Trash'))
+
+    def help(self):
+        output = '{} {}\n\n{}\n{:40}{}\n{:40}{}\n{:40}{}\n{:40}{}\n{:40}{}\n{:40}{}'.format(
+            self.__class__.__name__, self.version,
+            'Usage:',
+            '  dotfiles list|ls', '显示文件信息',
+            '  dotfiles add <filename> <description>', '添加文件跟踪',
+            '  dotfiles remove|rm <filename>', '移除文件跟踪',
+            '  dotfiles update', '更新文件大小',
+            '  dotfiles clean', '清除未跟踪文件',
+            '  dotfiles help', '显示帮助信息')
+        print(output)
+
+    def __getsize(self, filename):
+        path = os.path.join(self.environment_path, filename)
+        size = 0
+        if not os.path.exists(path):
+            pass
+        if os.path.isfile(path):
+            size = os.path.getsize(path)
+        elif os.path.isdir(path):
+            for root, dirs, files in os.walk(path):
+                size += sum([os.path.getsize(os.path.join(root, name)) for name in files if
+                             not os.path.islink(os.path.join(root, name))])
+        return size
+
+    def __getsize_format(self, filename, size):
+        path = os.path.join(self.environment_path, filename)
+        if not os.path.exists(path):
+            return 'Empty'
+        elif size < 1024:
+            return '{:.0f}B'.format(size)
+        elif size < 1024 * 1024:
+            return '{:.1f}K'.format(size / 1024)
+        elif size < 1024 * 1024 * 1024:
+            return '{:.1f}M'.format(size / (1024 * 1024))
+        elif size < 1024 * 1024 * 1024 * 1024:
+            return '{:.1f}G'.format(size / (1024 * 1024 * 1024))
+        else:
+            return '{:.1f}T'.format(size / (1024 * 1024 * 1024 * 1024))
+        
+    def __save(self):
+        json.dump(self.dot_file_json, open(self.dot_file_path, 'w'), ensure_ascii=False, indent=2, sort_keys=True)
+
+
+if __name__ == '__main__':
+
+    dotfiles = DotFiles()
+
+    if len(sys.argv) >= 2 and (sys.argv[1] == 'list' or sys.argv[1] == 'ls'):
+        if len(sys.argv) >= 3 and sys.argv[2] == '-s':
+            dotfiles.list(True)
+        else:
+            dotfiles.list()
+    elif len(sys.argv) >= 2 and sys.argv[1] == 'update':
+        dotfiles.update()
+        dotfiles.list()
+    elif len(sys.argv) >= 4 and sys.argv[1] == 'add':
+        dotfiles.add(sys.argv[2], sys.argv[3])
+        dotfiles.list()
+    elif len(sys.argv) >= 3 and (sys.argv[1] == 'remove' or sys.argv[1] == 'rm'):
+        dotfiles.remove(sys.argv[2])
+        dotfiles.list()
+    elif len(sys.argv) >= 2 and sys.argv[1] == 'clean':
+        dotfiles.clean()
+        dotfiles.list()
+    elif len(sys.argv) >= 2 and sys.argv[1] == 'help':
+        dotfiles.help()
+    else:
+        dotfiles.help()
+        exit(1)
