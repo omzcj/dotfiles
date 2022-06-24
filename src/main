@@ -11,7 +11,7 @@ class DotFiles:
     dot_file_name = '.dotfiles.json'
     dot_file_path = os.path.join(environment_path, dot_file_name)
     dot_file_json = {'.dotfiles.json': ['DotFiles配置', 0]}
-    
+
     def __init__(self) -> None:
         super().__init__()
         if not os.path.exists(self.dot_file_path):
@@ -24,7 +24,7 @@ class DotFiles:
                 exit(1)
 
     def list(self, is_sort=False):
-        total_size = 0
+        tracked_total_size = un_tracked_total_size = 0
         listdir = os.listdir(self.environment_path)
         if is_sort:
             tracked_list = sorted(self.dot_file_json.keys())
@@ -35,7 +35,7 @@ class DotFiles:
         filename_len = max([len(i) for i in listdir])
         for filename in tracked_list:
             item = self.dot_file_json[filename]
-            total_size += item[1]
+            tracked_total_size += item[1]
             output = "{:>6}\t{:<12}\t\033[0;%im{:%i}\033[0m\t{}" % (
                 34 if os.path.isdir(os.path.join(self.environment_path, filename)) else 0, filename_len
             )
@@ -45,13 +45,18 @@ class DotFiles:
             print('\033[0;31m* 未跟踪文件 *\033[0m')
         for filename in un_tracked_list:
             size = self.__getsize(filename)
-            total_size += size
+            un_tracked_total_size += size
             output = "{:>6}\t{:<12}\t\033[0;%im{:%i}\033[0m" % (
                 34 if os.path.isdir(os.path.join(self.environment_path, filename)) else 0, filename_len
             )
             output = output.format(self.__getsize_format(filename, size), size, filename)
             print(output)
+        print('\033[0;31m* 跟踪文件总计大小 *\033[0m')
+        print("{:>6}\t{:<12}".format(self.__getsize_format('.', tracked_total_size), tracked_total_size))
+        print('\033[0;31m* 未跟踪文件总计大小 *\033[0m')
+        print("{:>6}\t{:<12}".format(self.__getsize_format('.', un_tracked_total_size), un_tracked_total_size))
         print('\033[0;31m* 总计大小 *\033[0m')
+        total_size = tracked_total_size + un_tracked_total_size
         print("{:>6}\t{:<12}".format(self.__getsize_format('.', total_size), total_size))
 
     def add(self, filename, description):
@@ -123,7 +128,7 @@ class DotFiles:
             return '{:.1f}G'.format(size / (1024 * 1024 * 1024))
         else:
             return '{:.1f}T'.format(size / (1024 * 1024 * 1024 * 1024))
-        
+
     def __save(self):
         json.dump(self.dot_file_json, open(self.dot_file_path, 'w'), ensure_ascii=False, indent=2, sort_keys=True)
 
@@ -142,13 +147,10 @@ if __name__ == '__main__':
         dotfiles.list()
     elif len(sys.argv) >= 4 and sys.argv[1] == 'add':
         dotfiles.add(sys.argv[2], sys.argv[3])
-        dotfiles.list()
     elif len(sys.argv) >= 3 and (sys.argv[1] == 'remove' or sys.argv[1] == 'rm'):
         dotfiles.remove(sys.argv[2])
-        dotfiles.list()
     elif len(sys.argv) >= 2 and sys.argv[1] == 'clean':
         dotfiles.clean()
-        dotfiles.list()
     elif len(sys.argv) >= 2 and sys.argv[1] == 'help':
         dotfiles.help()
     else:
