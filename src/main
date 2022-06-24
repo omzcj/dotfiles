@@ -31,7 +31,7 @@ class DotFiles:
             tracked_list = sorted(self.dot_file_json.keys())
         else:
             tracked_list = sorted(self.dot_file_json.keys(), key=lambda x: self.dot_file_json[x][1], reverse=True)
-        white_list = [i for i in listdir if not i.startswith('.')]
+        white_list = [i for i in listdir if not i.startswith('.')] + ['.Trash']
         filename_len = max([len(i) for i in listdir])
         for filename in tracked_list:
             item = self.dot_file_json[filename]
