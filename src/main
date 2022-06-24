@@ -6,7 +6,7 @@ import sys
 
 
 class DotFiles:
-    version = 1.0
+    version = 2.0
     environment_path = os.environ['HOME'] if 1 else '.'
     dot_file_name = '.dotfiles.json'
     dot_file_path = os.path.join(environment_path, dot_file_name)
