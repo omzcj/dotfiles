@@ -3,10 +3,11 @@ import json
 import os
 import shutil
 import sys
+from collections import OrderedDict
 
 
 class DotFiles:
-    version = 2.0
+    version = 1.0
     environment_path = os.environ['HOME'] if 1 else '.'
     dot_file_name = '.dotfiles.json'
     dot_file_path = os.path.join(environment_path, dot_file_name)
@@ -31,7 +32,6 @@ class DotFiles:
         else:
             tracked_list = sorted(self.dot_file_json.keys(), key=lambda x: self.dot_file_json[x][1], reverse=True)
         white_list = [i for i in listdir if not i.startswith('.')]
-        un_tracked_list = sorted(set(listdir).difference(white_list).difference(tracked_list))
         filename_len = max([len(i) for i in listdir])
         for filename in tracked_list:
             item = self.dot_file_json[filename]
@@ -41,10 +41,15 @@ class DotFiles:
             )
             output = output.format(self.__getsize_format(filename, item[1]), item[1], filename, item[0])
             print(output)
+
+        un_tracked_list = set(listdir).difference(white_list).difference(tracked_list)
+        un_tracked_json = {}
         if len(un_tracked_list) > 0:
             print('\033[0;31m* 未跟踪文件 *\033[0m')
         for filename in un_tracked_list:
-            size = self.__getsize(filename)
+            un_tracked_json[filename] = self.__getsize(filename)
+        for filename in sorted(un_tracked_list, key=lambda x: un_tracked_json[x], reverse=True):
+            size = un_tracked_json[filename]
             un_tracked_total_size += size
             output = "{:>6}\t{:<12}\t\033[0;%im{:%i}\033[0m" % (
                 34 if os.path.isdir(os.path.join(self.environment_path, filename)) else 0, filename_len
