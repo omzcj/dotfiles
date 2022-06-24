@@ -42,13 +42,12 @@ class DotFiles:
             output = output.format(self.__getsize_format(filename, item[1]), item[1], filename, item[0])
             print(output)
 
-        un_tracked_list = set(listdir).difference(white_list).difference(tracked_list)
         un_tracked_json = {}
-        if len(un_tracked_list) > 0:
-            print('\033[0;31m* 未跟踪文件 *\033[0m')
-        for filename in un_tracked_list:
+        for filename in set(listdir).difference(white_list).difference(tracked_list):
             un_tracked_json[filename] = self.__getsize(filename)
-        for filename in sorted(un_tracked_list, key=lambda x: un_tracked_json[x], reverse=True):
+        if len(un_tracked_json) > 0:
+            print('\033[0;31m* 未跟踪文件 *\033[0m')
+        for filename in sorted(un_tracked_json.keys(), key=lambda x: un_tracked_json[x], reverse=True):
             size = un_tracked_json[filename]
             un_tracked_total_size += size
             output = "{:>6}\t{:<12}\t\033[0;%im{:%i}\033[0m" % (
